@@ -29,7 +29,7 @@
 
 ;; user options
 
-(defvar annotate nil "if non nil, annotate turns on the annotation mode")
+(defvar annotation-mode nil "if non nil, annotate turns on the annotation mode")
 
 (make-variable-buffer-local 'annotate)
 
@@ -44,11 +44,11 @@
 
 ;; Cmd
 
-(defun annotation-mode (&optional arg)
+(defun annotation-model (&optional arg)
   "Toggle `annotation' minor mode in this buffer."
   (interactive "P")
-  (setq annotate (if (null arg)
-		     (not annotate)
+  (setq annotation-mode (if (null arg)
+		     (not annotation-mode)
 		   (> (prefix-numeric-value arg) 0)))
   (advice-add 'mouse-set-region :after #'register-mouse-select))
 
@@ -76,12 +76,11 @@ This sets `annotation' to nil."
     (interactive)
     (setq annotation-file nil))
 
-
 (defun annotate ()
   "annotates a region."
   (interactive)
-  (if (not (null annotate))
-      (makeannotation)))
+  (if (not (null annotation-mode))
+      (make-annotation)))
 
 
 ;; Internal functions
@@ -112,7 +111,7 @@ This sets `annotation' to nil."
 (defun check-annotation-mode ()
   (interactive)
   (message "annotate %s"
-	   (not (null annotate))))
+	   (not (null annotation-mode))))
 
 
 (defun add-annotation-json-obj (obj)
@@ -130,16 +129,18 @@ This sets `annotation' to nil."
 	(write-region (json-encode obj)
 		      nil
 		      annotation-file)
-	(if (vectorp existing)
-	    (write-region (json-encode-array (vconcat existing (list obj)))
+      (if (vectorp existing)
+	    (write-region (json-encode (vconcat existing (list obj)))
 			  nil
-			  annotation-file))
+			  annotation-file)
 	  (write-region (json-encode-list (list existing obj))
 			nil
-			annotation-file))))
+			annotation-file)))))
 
 (define-minor-mode annotation-mode
   "Create annotations in emacs. Duh. Use set-annotation-file to set a file to write the annotations to"
-  :lighter " annotation")
+  :lighter " annotation"
+  (advice-add 'mouse-set-region :after #'register-mouse-select)
+  )
 
 (provide 'annotation-mode)
