@@ -39,8 +39,11 @@
 
 (make-variable-buffer-local 'annotation-file)
 
-(put 'annotation-file 'variable-interactive
-     "FSet annotation file: ")
+(put 'annotation-file 'variable-interactive "FSet annotation file: ")
+
+(defvar annotation-list nil "if non-nil the annotations list will limit what annotations are available")
+
+(put 'annotation-list 'annotation-list "XSet annotation list: ")
 
 ;; Cmd
 
@@ -71,10 +74,40 @@ This sets `annotation' to nil."
   (if (not (file-exists-p file)) ;; create file if not found
       (write-region "{}" nil file)))
 
+(defun set-annotation-dir (dir)
+  "sets the annotation file to use by providing the directory to save the file in. The filename will be the same as the current buffer's file name, with a .json appended to it."
+  (interactive "DSet where to save the annotation file: ")
+  (let* ((bn (file-name-nondirectory (buffer-file-name (window-buffer (minibuffer-selected-window)))))
+	 (file (concat dir bn ".json")))
+    (setq annotation-file file)
+    (if (not (file-exists-p file))
+	(write-region "{}" nil file))
+    (message "Annotations will be saved to `%s'" file)))
+
 (defun unset-annotation-file ()
     "unsets the annotation file to use."
     (interactive)
     (setq annotation-file nil))
+
+(defun set-valid-annotations (valid)
+  "sets the list of valid annotations"
+  (interactive "xProvide a list of valid annotations: ")
+  (if (listp valid)
+      (setq annotation-list valid)))
+
+(defun set-valid-annotations-file (file)
+  "sets the valid annotations to be used."
+  (interactive "FList of valid annotations (JSON): ")
+  (let* ((json-array-type 'list)
+	 (existing (json-read-file file)))
+       (if (not (null existing))
+	   (setq annotation-list existing)
+	 (setq annotation-list nil))))
+
+(defun unset-valid-annotations ()
+  "sets the annotation-list variable to nil"
+  (interactive)
+  (setq annotation-list nil))
 
 (defun annotate ()
   "annotates a region."
@@ -91,7 +124,11 @@ This sets `annotation' to nil."
      ((:class x)
       (:region_start begin)
       (:region_end end))"
-  (interactive "sWhat class should this region be? ")
+  (interactive
+   (if annotation-list
+       (let ((completion-ignore-case t))
+	 (list (completing-read "What class should this region be? " annotation-list nil t)))
+   "sWhat class should this region be? "))
   (let ((reg (get-region-box)))
     (list (cons "class" (eval x))
 	  (cons "region_start" (vconcat [] (car reg)))
@@ -138,9 +175,9 @@ This sets `annotation' to nil."
 			annotation-file)))))
 
 (define-minor-mode annotation-mode
-  "Create annotations in emacs. Duh. Use set-annotation-file to set a file to write the annotations to"
+  "Create annotations in emacs. Duh. Use set-annotation-file to set a file to write the annotations to. Use set-valid-annotations or set-valid-annotations-file to limit the annotation (this prevents errors)."
   :lighter " annotation"
   (advice-add 'mouse-set-region :after #'register-mouse-select)
-  )
+  (read-only-mode))
 
 (provide 'annotation-mode)
